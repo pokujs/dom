@@ -160,12 +160,13 @@ export const createRenderMetricsEmitter = (
 };
 
 export const createScreen = (): Screen => {
-  const baseScreenQueries = getQueriesForElement(document.body);
-
-  return new Proxy(baseScreenQueries, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      return typeof value === 'function' ? value.bind(target) : value;
+  return new Proxy({} as Screen, {
+    get(_target, prop) {
+      const baseScreenQueries = getQueriesForElement(document.body);
+      const value = Reflect.get(baseScreenQueries, prop, baseScreenQueries);
+      return typeof value === 'function'
+        ? value.bind(baseScreenQueries)
+        : value;
     },
   }) as Screen;
 };
