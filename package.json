@@ -28,7 +28,7 @@
     "test:bun": "bun ./node_modules/poku/lib/bin/index.js tests --showLogs",
     "test:deno": "deno run -A npm:poku tests --showLogs",
     "clean": "rimraf dist",
-    "build": "tsup src/index.ts --format esm --dts --target node20 --sourcemap --clean --tsconfig tsconfig.tsup.json",
+    "build": "npm run clean && tsc -p tsconfig.dist.json",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "lint": "npm run typecheck",
     "check": "npm run typecheck && npm test",
@@ -84,7 +84,6 @@
     "jsdom": "^26.1.0",
     "poku": "4.2.0",
     "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
