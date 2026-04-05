@@ -8,6 +8,13 @@ type TsxEsmApiModule = {
 
 const TSX_LOADER_MODULE = 'tsx/esm/api';
 
+// Once tsx is registered in a Node.js process it cannot be safely deregistered
+// and re-registered (tsx's hook worker re-instantiation fails with an invalid
+// URL scheme). Under isolation:'none' everything runs in the same process for
+// its lifetime, so keeping the loader registered permanently is correct.
+const TSX_LOADER_REGISTERED_KEY = Symbol.for('@pokujs/dom.tsx-loader-registered');
+type GlobalWithTsxFlag = typeof globalThis & { [TSX_LOADER_REGISTERED_KEY]?: boolean };
+
 const appendMissingRuntimeArgs = (runtimeOptionArgs: string[]) => {
   for (const arg of runtimeOptionArgs) {
     if (process.argv.includes(arg)) continue;
@@ -19,7 +26,11 @@ const loadDomSetupModule = async (domSetupPath: string) => {
   await import(pathToFileURL(domSetupPath).href);
 };
 
-const registerNodeTsxLoader = async (packageTag: string) => {
+const registerNodeTsxLoader = async (packageTag: string): Promise<() => void> => {
+  const g = globalThis as GlobalWithTsxFlag;
+
+  if (g[TSX_LOADER_REGISTERED_KEY]) return () => {};
+
   const requireFromCwd = createRequire(`${process.cwd()}/`);
 
   try {
@@ -29,7 +40,9 @@ const registerNodeTsxLoader = async (packageTag: string) => {
       throw new Error('Missing register() export from tsx loader API');
     }
 
-    return mod.register();
+    mod.register();
+    g[TSX_LOADER_REGISTERED_KEY] = true;
+    return () => {};
   } catch (error) {
     throw new Error(
       `[${packageTag}] isolation "none" in Node.js requires a working "tsx" installation to load .tsx/.jsx test files.`,
