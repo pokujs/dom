@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.1.2](https://github.com/pokujs/dom/compare/v1.1.1...v1.1.2) (2026-04-05)
+
+
+### Bug Fixes
+
+* preserve native Event/dispatchEvent in jsdom setup for Deno compatibility ([#9](https://github.com/pokujs/dom/issues/9)) ([3e734f6](https://github.com/pokujs/dom/commit/3e734f6a6591c18b7d3f2744cc64b5667307a3d9))
+
 ## [1.1.1](https://github.com/pokujs/dom/compare/v1.1.0...v1.1.1) (2026-04-05)
 
 
