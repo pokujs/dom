@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.1.0](https://github.com/pokujs/dom/compare/v1.0.1...v1.1.0) (2026-04-05)
+
+
+### Features
+
+* add commandBuilder hook to FrameworkDescriptor ([#6](https://github.com/pokujs/dom/issues/6)) ([b6d7ecd](https://github.com/pokujs/dom/commit/b6d7ecdbaa38f03f664e388192c031bead76fb12))
+
+
+### Bug Fixes
+
+* preserve node builtin specifiers in published ESM output ([f034757](https://github.com/pokujs/dom/commit/f034757e35dac9becd14115f31e78c6945395029))
+* preserve node builtin specifiers in published ESM output ([#5](https://github.com/pokujs/dom/issues/5)) ([09ef83b](https://github.com/pokujs/dom/commit/09ef83b5fad0ff84a528133342c7175ec071445e))
+
 ## [1.0.1](https://github.com/pokujs/dom/compare/v1.0.0...v1.0.1) (2026-04-05)
 
 
