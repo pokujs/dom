@@ -1,4 +1,4 @@
-import { GlobalRegistrator } from '@happy-dom/global-registrator';
+import { GlobalWindow } from 'happy-dom';
 import type { RuntimeOptions } from './types.ts';
 
 type SetupDomEnvironmentOptions = {
@@ -19,29 +19,53 @@ const applyReactActEnvironment = (enabled: boolean) => {
   }
 };
 
-export const setupHappyDomEnvironment = async (
-  options: SetupDomEnvironmentOptions
-) => {
-  if (!globalThis.window || !globalThis.document) {
-    GlobalRegistrator.register({
-      url: options.runtimeOptions.domUrl,
-    });
-
-    const nativeDispatchEvent = globalThis.window.dispatchEvent;
-    if (typeof nativeDispatchEvent === 'function') {
-      globalThis.dispatchEvent = nativeDispatchEvent.bind(globalThis.window);
-    }
-  }
-
-  applyReactActEnvironment(Boolean(options.enableReactActEnvironment));
-};
-
 const defineGlobal = (key: keyof typeof globalThis, value: unknown) => {
   Object.defineProperty(globalThis, key, {
     configurable: true,
     writable: true,
     value,
   });
+};
+
+export const setupHappyDomEnvironment = async (
+  options: SetupDomEnvironmentOptions
+) => {
+  if (!globalThis.window || !globalThis.document) {
+    // Save native event primitives before installing Happy DOM globals.
+    // Deno's runtime calls globalThis.dispatchEvent('beforeunload') on exit
+    // using its own native Event constructor — if Happy DOM's dispatchEvent
+    // is installed instead, the type check inside it throws a TypeError.
+    const existingDispatchEvent = globalThis.dispatchEvent;
+    const existingEvent = globalThis.Event;
+    const existingCustomEvent = globalThis.CustomEvent;
+
+    const happyWindow = new GlobalWindow({ url: options.runtimeOptions.domUrl });
+
+    defineGlobal('window', happyWindow as unknown as Window & typeof globalThis);
+    defineGlobal('document', happyWindow.document);
+    defineGlobal('navigator', happyWindow.navigator);
+    defineGlobal('HTMLElement', happyWindow.HTMLElement);
+    defineGlobal('Element', happyWindow.Element);
+    defineGlobal('Node', happyWindow.Node);
+    defineGlobal('Text', happyWindow.Text);
+    defineGlobal('SVGElement', happyWindow.SVGElement);
+    defineGlobal('MutationObserver', happyWindow.MutationObserver);
+    defineGlobal('requestAnimationFrame', happyWindow.requestAnimationFrame);
+    defineGlobal('cancelAnimationFrame', happyWindow.cancelAnimationFrame);
+
+    // Prefer the runtime's native Event constructors so that Deno's internal
+    // event dispatch (e.g. beforeunload) continues to work correctly.
+    defineGlobal('Event', typeof existingEvent === 'function' ? existingEvent : happyWindow.Event);
+    defineGlobal('CustomEvent', typeof existingCustomEvent === 'function' ? existingCustomEvent : happyWindow.CustomEvent);
+
+    if (typeof existingDispatchEvent === 'function') {
+      globalThis.dispatchEvent = existingDispatchEvent;
+    } else {
+      globalThis.dispatchEvent = happyWindow.dispatchEvent.bind(happyWindow) as unknown as typeof globalThis.dispatchEvent;
+    }
+  }
+
+  applyReactActEnvironment(Boolean(options.enableReactActEnvironment));
 };
 
 export const setupJsdomEnvironment = async (

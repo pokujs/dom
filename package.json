@@ -56,15 +56,11 @@
     "provenance": true
   },
   "peerDependencies": {
-    "@happy-dom/global-registrator": ">=20",
     "happy-dom": ">=20",
     "jsdom": ">=22",
     "poku": ">=4.1.0"
   },
   "peerDependenciesMeta": {
-    "@happy-dom/global-registrator": {
-      "optional": true
-    },
     "happy-dom": {
       "optional": true
     },
