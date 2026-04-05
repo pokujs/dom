@@ -82,6 +82,15 @@ export const setupJsdomEnvironment = async (
       );
     }
 
+    // Save native event primitives before jsdom replaces them.
+    // Deno's runtime teardown fires dispatchLoadEvent() on process exit using
+    // its own native Event constructor — if jsdom's Event is installed instead,
+    // setTarget() receives undefined and throws "Cannot set properties of
+    // undefined (setting 'target')".
+    const existingDispatchEvent = globalThis.dispatchEvent;
+    const existingEvent = globalThis.Event;
+    const existingCustomEvent = globalThis.CustomEvent;
+
     const { JSDOM } = mod;
     const dom = new JSDOM('', {
       url: options.runtimeOptions.domUrl,
@@ -96,11 +105,20 @@ export const setupJsdomEnvironment = async (
     defineGlobal('Node', dom.window.Node);
     defineGlobal('Text', dom.window.Text);
     defineGlobal('SVGElement', dom.window.SVGElement);
-    defineGlobal('Event', dom.window.Event);
-    defineGlobal('CustomEvent', dom.window.CustomEvent);
     defineGlobal('MutationObserver', dom.window.MutationObserver);
     defineGlobal('requestAnimationFrame', dom.window.requestAnimationFrame);
     defineGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame);
+
+    // Prefer the runtime's native Event constructors so that Deno's internal
+    // event dispatch (e.g. load/beforeunload) continues to work correctly.
+    defineGlobal('Event', typeof existingEvent === 'function' ? existingEvent : dom.window.Event);
+    defineGlobal('CustomEvent', typeof existingCustomEvent === 'function' ? existingCustomEvent : dom.window.CustomEvent);
+
+    if (typeof existingDispatchEvent === 'function') {
+      globalThis.dispatchEvent = existingDispatchEvent;
+    } else {
+      globalThis.dispatchEvent = dom.window.dispatchEvent.bind(dom.window) as unknown as typeof globalThis.dispatchEvent;
+    }
   }
 
   applyReactActEnvironment(Boolean(options.enableReactActEnvironment));
