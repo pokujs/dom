@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.0.1](https://github.com/pokujs/dom/compare/v1.0.0...v1.0.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* lazily re-evaluate screen queries on each access ([#1](https://github.com/pokujs/dom/issues/1)) ([4ac921a](https://github.com/pokujs/dom/commit/4ac921aa9a9c96eb75937ffe4c9d4a5240e6f703))
+
 ## 1.0.0 (2026-04-05)
 
 
