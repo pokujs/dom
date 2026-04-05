@@ -160,13 +160,54 @@ export const createRenderMetricsEmitter = (
 };
 
 export const createScreen = (): Screen => {
+  // Cache the bound query object per document.body reference.
+  // getQueriesForElement() is not free — it traverses all bound queries.
+  // The Proxy previously called it on every single property access; caching
+  // by body reference avoids redundant work while still picking up a new body
+  // when JSDOM reinitialises it (e.g. between test files under isolation:none).
+  let cachedBody: HTMLElement | null = null;
+  let cachedQueries: ReturnType<typeof getQueriesForElement> | null = null;
+
+  const getQueries = () => {
+    const body = document.body;
+    if (body !== cachedBody) {
+      cachedBody = body;
+      cachedQueries = getQueriesForElement(body);
+    }
+    return cachedQueries!;
+  };
+
   return new Proxy({} as Screen, {
     get(_target, prop) {
-      const baseScreenQueries = getQueriesForElement(document.body);
-      const value = Reflect.get(baseScreenQueries, prop, baseScreenQueries);
-      return typeof value === 'function'
-        ? value.bind(baseScreenQueries)
-        : value;
+      const boundQueries = getQueries();
+      const value = Reflect.get(boundQueries, prop, boundQueries);
+      return typeof value === 'function' ? value.bind(boundQueries) : value;
     },
   }) as Screen;
 };
+
+/**
+ * Copies all properties of `base` onto `target`, wrapping every function value
+ * with `wrapFn` so frameworks can inject their own flush/sync step (React `act`,
+ * Vue `nextTick`, etc.) without duplicating the iteration boilerplate.
+ *
+ * @param target  The object to receive the wrapped methods (typically the new fireEvent function).
+ * @param base    The original object whose methods should be wrapped.
+ * @param wrapFn  Receives a zero-argument invoker; its return value is the new return value.
+ */
+export const wrapFireEventMethods = (
+  target: Record<string, unknown>,
+  base: Record<string, unknown>,
+  wrapFn: (invoke: () => unknown) => unknown
+): void => {
+  for (const key of Object.keys(base)) {
+    const value = base[key];
+    if (typeof value !== 'function') {
+      target[key] = value;
+    } else {
+      target[key] = (...args: unknown[]) =>
+        wrapFn(() => Reflect.apply(value, base, args));
+    }
+  }
+};
+
