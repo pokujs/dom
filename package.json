@@ -1,6 +1,6 @@
 {
   "name": "@pokujs/dom",
-  "version": "1.0.2",
+  "version": "1.0.1",
   "private": false,
   "description": "Shared DOM testing core for Poku framework adapters.",
   "type": "module",
@@ -28,7 +28,7 @@
     "test:bun": "bun ./node_modules/poku/lib/bin/index.js tests --showLogs",
     "test:deno": "deno run -A npm:poku tests --showLogs",
     "clean": "rimraf dist",
-    "build": "tsup src/index.ts --format esm --dts --target node20 --sourcemap --clean --tsconfig tsconfig.tsup.json && node ./scripts/preserve-node-builtins.mjs",
+    "build": "tsup src/index.ts --format esm --dts --target node20 --sourcemap --clean --tsconfig tsconfig.tsup.json",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "lint": "npm run typecheck",
     "check": "npm run typecheck && npm test",
