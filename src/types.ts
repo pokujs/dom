@@ -55,4 +55,11 @@ export type FrameworkDescriptor = {
   metricMessageType: string;
   metricBatchMessageType: string;
   testFileExtensions?: string[];
+  commandBuilder?: (input: {
+    runtime: string;
+    command: string[];
+    file: string;
+    domSetupPath: string;
+    runtimeOptionArgs: string[];
+  }) => { shouldHandle: boolean; command: string[] };
 };

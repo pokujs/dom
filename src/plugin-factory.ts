@@ -91,14 +91,9 @@ export const createFrameworkTestingPluginFactory = (
         const runtime = command[0];
         if (!runtime) return command;
 
-        const result = buildRunnerCommand({
-          runtime,
-          command,
-          file,
-          domSetupPath,
-          runtimeOptionArgs,
-          extensions,
-        });
+        const result = descriptor.commandBuilder
+          ? descriptor.commandBuilder({ runtime, command, file, domSetupPath, runtimeOptionArgs })
+          : buildRunnerCommand({ runtime, command, file, domSetupPath, runtimeOptionArgs, extensions });
 
         if (!result.shouldHandle) return command;
         return result.command;
