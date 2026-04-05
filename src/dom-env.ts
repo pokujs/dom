@@ -41,7 +41,7 @@ export const setupHappyDomEnvironment = async (
 
     const happyWindow = new GlobalWindow({ url: options.runtimeOptions.domUrl });
 
-    defineGlobal('window', happyWindow as unknown as Window & typeof globalThis);
+    defineGlobal('window', happyWindow);
     defineGlobal('document', happyWindow.document);
     defineGlobal('navigator', happyWindow.navigator);
     defineGlobal('HTMLElement', happyWindow.HTMLElement);
@@ -88,7 +88,7 @@ export const setupJsdomEnvironment = async (
       pretendToBeVisual: true,
     });
 
-    defineGlobal('window', dom.window as unknown as Window & typeof globalThis);
+    defineGlobal('window', dom.window);
     defineGlobal('document', dom.window.document);
     defineGlobal('navigator', dom.window.navigator);
     defineGlobal('HTMLElement', dom.window.HTMLElement);
