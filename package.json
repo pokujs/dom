@@ -1,0 +1,91 @@
+{
+  "name": "@pokujs/dom",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Shared DOM testing core for Poku framework adapters.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.x.x",
+    "bun": ">=1.x.x",
+    "deno": ">=2.x.x",
+    "typescript": ">=6.x.x"
+  },
+  "scripts": {
+    "test": "npm run test:node",
+    "test:node": "node --import=tsx ./node_modules/poku/lib/bin/index.js tests --showLogs",
+    "test:bun": "bun ./node_modules/poku/lib/bin/index.js tests --showLogs",
+    "test:deno": "deno run -A npm:poku tests --showLogs",
+    "clean": "rimraf dist",
+    "build": "tsup src/index.ts --format esm --dts --target node20 --sourcemap --clean --tsconfig tsconfig.tsup.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "lint": "npm run typecheck",
+    "check": "npm run typecheck && npm test",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "poku",
+    "dom",
+    "testing",
+    "happy-dom",
+    "jsdom"
+  ],
+  "author": "Lojhan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pokujs/dom.git"
+  },
+  "homepage": "https://github.com/pokujs/dom#readme",
+  "bugs": {
+    "url": "https://github.com/pokujs/dom/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "@happy-dom/global-registrator": ">=20",
+    "happy-dom": ">=20",
+    "jsdom": ">=22",
+    "poku": ">=4.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@happy-dom/global-registrator": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "jsdom": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@testing-library/dom": "^10.4.1"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.8.9",
+    "@types/jsdom": "^28.0.1",
+    "@types/node": "^25.5.0",
+    "cross-env": "^10.1.0",
+    "happy-dom": "^20.8.9",
+    "jsdom": "^26.1.0",
+    "poku": "4.2.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
