@@ -530,6 +530,53 @@ describe("test-scope: Hook registration (getScopeHooks / registerScopeHooks)", a
 		}
 	});
 
+	await it("registerScopeHooks composes with an existing provider", async () => {
+		const SCOPE_HOOKS_KEY = Symbol.for("@pokujs/poku.test-scope-hooks");
+		type GlobalWithHooks = typeof globalThis & {
+			[key: symbol]: unknown;
+		};
+		const g = globalThis as GlobalWithHooks;
+
+		const original = g[SCOPE_HOOKS_KEY];
+
+		const calls: string[] = [];
+
+		try {
+			g[SCOPE_HOOKS_KEY] = {
+				createHolder: () => ({ scope: { tag: "legacy" } }),
+				runScoped: async (_holder: { scope: unknown }, fn: () => Promise<unknown> | unknown) => {
+					calls.push("legacy:before");
+					const result = fn();
+					if (result instanceof Promise) await result;
+					calls.push("legacy:after");
+				},
+			};
+
+			registerScopeHooks();
+			const hooks = getScopeHooks();
+
+			if (!hooks) {
+				assert.fail("Hooks should be available");
+			}
+
+			await hooks.runScoped(hooks.createHolder(), () => {
+				calls.push("test:run");
+			});
+
+			assert.deepStrictEqual(
+				calls,
+				["legacy:before", "test:run", "legacy:after"],
+				"Existing provider still wraps execution after DOM registration",
+			);
+		} finally {
+			if (original !== undefined) {
+				g[SCOPE_HOOKS_KEY] = original;
+			} else {
+				delete g[SCOPE_HOOKS_KEY];
+			}
+		}
+	});
+
 	await it("getScopeHooks returns undefined before registration", async () => {
 		const SCOPE_HOOKS_KEY = Symbol.for("@pokujs/poku.test-scope-hooks");
 		type GlobalWithHooks = typeof globalThis & {
