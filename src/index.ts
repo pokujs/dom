@@ -6,3 +6,4 @@ export * from './plugin-metrics.ts';
 export * from './plugin-factory.ts';
 export * from './dom-env.ts';
 export * from './testing-core.ts';
+export * from './test-scope.ts';
