@@ -249,7 +249,7 @@ export const registerScopeHooks = (): void => {
         createHolder: () => { scope: unknown };
         runScoped: (
           holder: { scope: unknown },
-          fn: () => Promise<unknown> | unknown
+          fn: (params?: Record<string, unknown>) => Promise<unknown> | unknown
         ) => Promise<void>;
       }) => unknown;
     }

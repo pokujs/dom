@@ -7,7 +7,7 @@ declare module 'poku/plugins' {
     createHolder: () => ScopeHookHolder;
     runScoped: (
       holder: ScopeHookHolder,
-      fn: () => Promise<unknown> | unknown
+      fn: (params?: Record<string, unknown>) => Promise<unknown> | unknown
     ) => Promise<void>;
   };
 
@@ -15,7 +15,7 @@ declare module 'poku/plugins' {
     createHolder: () => ScopeHookHolder;
     runScoped: (
       holder: ScopeHookHolder,
-      fn: () => Promise<unknown> | unknown
+      fn: (params?: Record<string, unknown>) => Promise<unknown> | unknown
     ) => Promise<void>;
   };
 }
