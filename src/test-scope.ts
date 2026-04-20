@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import * as pokuPlugins from 'poku/plugins';
+import { composeScopeHooks } from '@pokujs/scope-hooks';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -242,21 +242,8 @@ type GlobalWithScopeHooks = typeof globalThis & {
  * dom-setup-jsdom.ts).  It is idempotent.
  */
 export const registerScopeHooks = (): void => {
-  const compose = (
-    pokuPlugins as {
-      composeScopeHooks?: (provider: {
-        name: string;
-        createHolder: () => { scope: unknown };
-        runScoped: (
-          holder: { scope: unknown },
-          fn: (params?: Record<string, unknown>) => Promise<unknown> | unknown
-        ) => Promise<void>;
-      }) => unknown;
-    }
-  ).composeScopeHooks;
-
-  if (typeof compose === 'function') {
-    compose({
+  if (typeof composeScopeHooks === 'function') {
+    composeScopeHooks({
       name: '@pokujs/dom.scope-hooks',
       createHolder: createLazyHolder,
       runScoped: (holder, fn) => runScoped(holder as LazyHolder, fn),
