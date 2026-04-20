@@ -1,5 +1,6 @@
 import { GlobalWindow } from 'happy-dom';
 import type { RuntimeOptions } from './types.ts';
+import { registerScopeHooks } from './test-scope.ts';
 
 type SetupDomEnvironmentOptions = {
   runtimeOptions: RuntimeOptions;
@@ -30,6 +31,8 @@ const defineGlobal = (key: keyof typeof globalThis, value: unknown) => {
 export const setupHappyDomEnvironment = async (
   options: SetupDomEnvironmentOptions
 ) => {
+  registerScopeHooks();
+
   if (!globalThis.window || !globalThis.document) {
     // Save native event primitives before installing Happy DOM globals.
     // Deno's runtime calls globalThis.dispatchEvent('beforeunload') on exit
@@ -71,6 +74,8 @@ export const setupHappyDomEnvironment = async (
 export const setupJsdomEnvironment = async (
   options: SetupDomEnvironmentOptions
 ) => {
+  registerScopeHooks();
+
   if (!globalThis.window || !globalThis.document) {
     let mod: typeof import('jsdom');
 
