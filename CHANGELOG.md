@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.3.0](https://github.com/pokujs/dom/compare/dom-v1.2.0...dom-v1.3.0) (2026-04-20)
+
+
+### Features
+
+* add ALS-based test scope hooks foundation ([#14](https://github.com/pokujs/dom/issues/14)) ([80cda0f](https://github.com/pokujs/dom/commit/80cda0fff376b0b782125c6901d7b1e5a3f9ea40))
+
 ## [1.2.0](https://github.com/pokujs/dom/compare/dom-v1.1.2...dom-v1.2.0) (2026-04-05)
 
 
