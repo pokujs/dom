@@ -1,17 +1,19 @@
-import { assert, describe, it } from "poku";
+import { afterEach, assert, beforeEach, describe, it } from "poku";
+import { getScopeHooks } from "@pokujs/scope-hooks";
 import {
 	als,
 	createLazyHolder,
 	defineSlotKey,
 	getCurrentScope,
 	getOrCreateScope,
-	getScopeHooks,
 	type LazyHolder,
 	type Observer,
 	registerScopeHooks,
 	runScoped,
 	type TestScope,
 } from "../src/test-scope.ts";
+
+const SCOPE_HOOKS_KEY = Symbol.for('@pokujs/poku.test-scope-hooks');
 
 // Helper: Get scope with assertion guard for use within runScoped() contexts
 function ensureScope(): TestScope {
@@ -485,117 +487,86 @@ describe("test-scope: Concurrent isolation via ALS", async () => {
 });
 
 describe("test-scope: Hook registration (getScopeHooks / registerScopeHooks)", async () => {
+  type GlobalWithHooks = typeof globalThis & {
+    [key: symbol]: unknown;
+  };
+  const g = globalThis as GlobalWithHooks;
+  let originalHooks: unknown;
+
+  beforeEach(() => {
+    originalHooks = g[SCOPE_HOOKS_KEY];
+    delete g[SCOPE_HOOKS_KEY];
+  });
+
+  afterEach(() => {
+    if (originalHooks === undefined) {
+      delete g[SCOPE_HOOKS_KEY];
+    } else {
+      g[SCOPE_HOOKS_KEY] = originalHooks;
+    }
+    originalHooks = undefined;
+  });
+
 	await it("registerScopeHooks idempotently registers hooks", async () => {
-		// Clean state for this test
-		const SCOPE_HOOKS_KEY = Symbol.for("@pokujs/poku.test-scope-hooks");
-		type GlobalWithHooks = typeof globalThis & {
-			[key: symbol]: unknown;
-		};
-		const g = globalThis as GlobalWithHooks;
-
-		// Save original
-		const original = g[SCOPE_HOOKS_KEY];
-
-		try {
-			// Clear it
-			delete g[SCOPE_HOOKS_KEY];
-
-			// First register
-			registerScopeHooks();
-			const hooks1 = getScopeHooks();
-      if (!hooks1) {
-        assert.fail("Hooks should be registered");
-      }
-
-			assert.ok(
-				"createHolder" in hooks1 && "runScoped" in hooks1,
-				"Hooks have required methods",
-			);
-
-			// Second register (should not overwrite)
-			registerScopeHooks();
-			const hooks2 = getScopeHooks();
-			assert.strictEqual(
-				hooks1,
-				hooks2,
-				"Same hooks instance returned (idempotent)",
-			);
-		} finally {
-			// Restore
-			if (original !== undefined) {
-				g[SCOPE_HOOKS_KEY] = original;
-			} else {
-				delete g[SCOPE_HOOKS_KEY];
-			}
+		// First register
+		registerScopeHooks();
+		const hooks1 = getScopeHooks();
+		if (!hooks1) {
+			assert.fail("Hooks should be registered");
 		}
+
+		assert.ok(
+			"createHolder" in hooks1 && "runScoped" in hooks1,
+			"Hooks have required methods",
+		);
+
+		// Second register (should not overwrite)
+		registerScopeHooks();
+		const hooks2 = getScopeHooks();
+		assert.strictEqual(
+			hooks1,
+			hooks2,
+			"Same hooks instance returned (idempotent)",
+		);
 	});
 
 	await it("registerScopeHooks composes with an existing provider", async () => {
-		const SCOPE_HOOKS_KEY = Symbol.for("@pokujs/poku.test-scope-hooks");
-		type GlobalWithHooks = typeof globalThis & {
-			[key: symbol]: unknown;
-		};
-		const g = globalThis as GlobalWithHooks;
-
-		const original = g[SCOPE_HOOKS_KEY];
-
 		const calls: string[] = [];
+		g[SCOPE_HOOKS_KEY] = {
+			createHolder: () => ({ scope: { tag: "legacy" } }),
+			runScoped: async (_holder: { scope: unknown }, fn: () => Promise<unknown> | unknown) => {
+				calls.push("legacy:before");
+				const result = fn();
+				if (result instanceof Promise) await result;
+				calls.push("legacy:after");
+			},
+		};
 
-		try {
-			g[SCOPE_HOOKS_KEY] = {
-				createHolder: () => ({ scope: { tag: "legacy" } }),
-				runScoped: async (_holder: { scope: unknown }, fn: () => Promise<unknown> | unknown) => {
-					calls.push("legacy:before");
-					const result = fn();
-					if (result instanceof Promise) await result;
-					calls.push("legacy:after");
-				},
-			};
+		registerScopeHooks();
+		const hooks = getScopeHooks();
 
-			registerScopeHooks();
-			const hooks = getScopeHooks();
-
-			if (!hooks) {
-				assert.fail("Hooks should be available");
-			}
-
-			await hooks.runScoped(hooks.createHolder(), () => {
-				calls.push("test:run");
-			});
-
-			assert.deepStrictEqual(
-				calls,
-				["legacy:before", "test:run", "legacy:after"],
-				"Existing provider still wraps execution after DOM registration",
-			);
-		} finally {
-			if (original !== undefined) {
-				g[SCOPE_HOOKS_KEY] = original;
-			} else {
-				delete g[SCOPE_HOOKS_KEY];
-			}
+		if (!hooks) {
+			assert.fail("Hooks should be available");
 		}
+
+		await hooks.runScoped(hooks.createHolder(), () => {
+			calls.push("test:run");
+		});
+
+		assert.deepStrictEqual(
+			calls,
+			[
+				"legacy:before",
+				"test:run",
+				"legacy:after",
+			],
+			"Existing provider remains visible after DOM registration",
+		);
 	});
 
 	await it("getScopeHooks returns undefined before registration", async () => {
-		const SCOPE_HOOKS_KEY = Symbol.for("@pokujs/poku.test-scope-hooks");
-		type GlobalWithHooks = typeof globalThis & {
-			[key: symbol]: unknown;
-		};
-		const g = globalThis as GlobalWithHooks;
-
-		// Save and clear
-		const original = g[SCOPE_HOOKS_KEY];
-		delete g[SCOPE_HOOKS_KEY];
-
-		try {
-			const hooks = getScopeHooks();
-			assert.strictEqual(hooks, undefined, "No hooks before registration");
-		} finally {
-			if (original !== undefined) {
-				g[SCOPE_HOOKS_KEY] = original;
-			}
-		}
+		const hooks = getScopeHooks();
+		assert.strictEqual(hooks, undefined, "No hooks before registration");
 	});
 });
 
