@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.3.1](https://github.com/pokujs/dom/compare/dom-v1.3.0...dom-v1.3.1) (2026-04-22)
+
+
+### Bug Fixes
+
+* use --preload for Bun instead of --import ([#16](https://github.com/pokujs/dom/issues/16)) ([7db0e16](https://github.com/pokujs/dom/commit/7db0e168d224e7839892460fa90f3591a84d9970))
+
 ## [1.3.0](https://github.com/pokujs/dom/compare/dom-v1.2.0...dom-v1.3.0) (2026-04-20)
 
 
