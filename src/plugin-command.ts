@@ -82,6 +82,7 @@ export const buildRunnerCommand = ({
   if (fileIndex === -1) return { shouldHandle: false, command };
 
   const nodeImportFlag = `--import=${domSetupPath}`;
+  const bunPreloadFlag = `--preload ${domSetupPath}`;
   const denoPreloadFlag = `--preload=${domSetupPath}`;
   const beforeFile: string[] = [];
   const afterFile: string[] = [];
@@ -114,7 +115,11 @@ export const buildRunnerCommand = ({
   const extraImports: string[] = [];
   if (isNodeRuntime(runtime) && !hasTsx) extraImports.push('--import=tsx');
   if (support.supportsNodeLikeImport && !hasNodeLikeDomSetup) {
-    extraImports.push(nodeImportFlag);
+    if (isBunRuntime(runtime)) {
+      extraImports.push(bunPreloadFlag);
+    } else {
+      extraImports.push(nodeImportFlag);
+    }
   }
   if (support.supportsDenoPreload && !hasDenoDomSetup) {
     extraImports.push(denoPreloadFlag);
