@@ -32,6 +32,24 @@ test('buildRunnerCommand injects runtime setup flags', async () => {
   ]);
 });
 
+test('buildRunnerCommand injects --preload for Bun (not --import)', async () => {
+  const result = buildRunnerCommand({
+    runtime: 'bun',
+    command: ['bun', 'tests/example.test.tsx'],
+    file: 'tests/example.test.tsx',
+    domSetupPath: '/tmp/dom-setup.ts',
+    runtimeOptionArgs: [],
+    extensions: new Set(['.tsx', '.jsx']),
+  });
+
+  assert.strictEqual(result.shouldHandle, true);
+  assert.deepStrictEqual(result.command, [
+    'bun',
+    '--preload /tmp/dom-setup.ts',
+    'tests/example.test.tsx',
+  ]);
+});
+
 test('buildRunnerCommand leaves unsupported files unchanged', async () => {
   const command = ['node', 'tests/example.test.ts'];
   const result = buildRunnerCommand({
