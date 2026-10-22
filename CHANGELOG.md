@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
+## [1.3.2](https://github.com/pokujs/dom/compare/dom-v1.3.1...dom-v1.3.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* isolate DOM scopes and drain cleanup after failures ([#19](https://github.com/pokujs/dom/issues/19)) ([79231e4](https://github.com/pokujs/dom/commit/79231e494064c49c2597b90204facc6a27a6e1b5))
+
 ## [1.3.1](https://github.com/pokujs/dom/compare/dom-v1.3.0...dom-v1.3.1) (2026-04-22)
 
 
