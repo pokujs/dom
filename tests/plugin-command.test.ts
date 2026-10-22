@@ -45,7 +45,7 @@ test('buildRunnerCommand injects --preload for Bun (not --import)', async () => 
   assert.strictEqual(result.shouldHandle, true);
   assert.deepStrictEqual(result.command, [
     'bun',
-    '--preload /tmp/dom-setup.ts',
+    '--preload=/tmp/dom-setup.ts',
     'tests/example.test.tsx',
   ]);
 });
