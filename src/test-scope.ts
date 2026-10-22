@@ -156,7 +156,8 @@ class TestScopeImpl implements TestScope {
     this.#observers = undefined;
 
     if (errors.length === 1) throw errors[0];
-    if (errors.length > 1) throw new AggregateError(errors, 'Scope drain errors');
+    if (errors.length > 1)
+      throw new AggregateError(errors, 'Scope drain errors');
   }
 
   #getObservers<T>(key: SlotKey<T>): Set<Observer<T>> {
@@ -170,7 +171,33 @@ class TestScopeImpl implements TestScope {
   }
 }
 
-export const als = new AsyncLocalStorage<LazyHolder>();
+const ALS_GLOBAL_KEY = Symbol.for('@pokujs/dom.als');
+const FALLBACK_DRAINERS_KEY = Symbol.for('@pokujs/dom.fallback-drainers');
+const ACTIVE_SCOPED_RUNS_KEY = Symbol.for('@pokujs/dom.active-scoped-runs');
+
+type GlobalWithAls = typeof globalThis & {
+  [ALS_GLOBAL_KEY]?: AsyncLocalStorage<LazyHolder>;
+  [FALLBACK_DRAINERS_KEY]?: Set<() => MaybePromise>;
+  [ACTIVE_SCOPED_RUNS_KEY]?: number;
+};
+
+const getSharedAls = (): AsyncLocalStorage<LazyHolder> => {
+  const g = globalThis as GlobalWithAls;
+  if (!g[ALS_GLOBAL_KEY]) {
+    g[ALS_GLOBAL_KEY] = new AsyncLocalStorage<LazyHolder>();
+  }
+  return g[ALS_GLOBAL_KEY];
+};
+
+const getFallbackDrainers = (): Set<() => MaybePromise> => {
+  const g = globalThis as GlobalWithAls;
+  if (!g[FALLBACK_DRAINERS_KEY]) {
+    g[FALLBACK_DRAINERS_KEY] = new Set();
+  }
+  return g[FALLBACK_DRAINERS_KEY];
+};
+
+export const als = getSharedAls();
 
 /** Create the sentinel object stored in ALS for one test invocation. */
 export const createLazyHolder = (): LazyHolder => ({ scope: undefined });
@@ -183,12 +210,39 @@ export const runScoped = async (
   holder: LazyHolder,
   fn: () => Promise<unknown> | unknown
 ): Promise<void> => {
-  await als.run(holder, async () => {
-    const r = fn();
-    if (r instanceof Promise) await r;
-  });
-
-  if (holder.scope) await holder.scope._drain();
+  const g = globalThis as GlobalWithAls;
+  g[ACTIVE_SCOPED_RUNS_KEY] = (g[ACTIVE_SCOPED_RUNS_KEY] ?? 0) + 1;
+  const errors: unknown[] = [];
+  try {
+    await als.run(holder, async () => {
+      const r = fn();
+      if (r instanceof Promise) await r;
+    });
+  } catch (error) {
+    errors.push(error);
+  } finally {
+    try {
+      if (holder.scope) await holder.scope._drain();
+    } catch (error) {
+      errors.push(error);
+    }
+    g[ACTIVE_SCOPED_RUNS_KEY] = Math.max(
+      0,
+      (g[ACTIVE_SCOPED_RUNS_KEY] ?? 1) - 1
+    );
+    if (g[ACTIVE_SCOPED_RUNS_KEY] === 0) {
+      for (const drainFallback of getFallbackDrainers()) {
+        try {
+          await drainFallback();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1)
+    throw new AggregateError(errors, 'Scope cleanup errors');
 };
 
 /**
@@ -260,3 +314,70 @@ export const registerScopeHooks = (): void => {
 /** Retrieve the registered scope hooks, or `undefined` if not yet registered. */
 export const getScopeHooks = (): ScopeHooks | undefined =>
   (globalThis as GlobalWithScopeHooks)[SCOPE_HOOKS_KEY];
+
+export type ScopedRegistry<T> = {
+  /** Returns the Set<T> for the current test scope (registering scope cleanup once), or the fallback Set<T>. */
+  getItems: () => Set<T>;
+  /** Returns the Set<T> for the current test scope if active, otherwise undefined. */
+  getScopedItems: () => Set<T> | undefined;
+  /** The fallback Set<T> used when outside an active test scope. */
+  fallbackItems: Set<T>;
+};
+
+/**
+ * Create a per-test scoped `Set<T>` registry backed by AsyncLocalStorage,
+ * with automatic cleanup at the end of each test scope and a fallback `Set<T>`
+ * when called outside a scope.
+ */
+export const createScopedRegistry = <T>(options: {
+  name: string;
+  onCleanup: (items: Set<T>) => MaybePromise;
+}): ScopedRegistry<T> => {
+  const itemsSlotKey = defineSlotKey<Set<T>>(`${options.name}.items`);
+  const cleanupSlotKey = defineSlotKey<{ registered: boolean }>(
+    `${options.name}.cleanup-registered`
+  );
+  const fallbackKey = Symbol.for(`${options.name}.fallback-items`);
+  const g = globalThis as Record<symbol, Set<T> | undefined>;
+  if (!g[fallbackKey]) {
+    g[fallbackKey] = new Set<T>();
+  }
+  const fallbackItems = g[fallbackKey]!;
+
+  const getScopedItems = (): Set<T> | undefined => {
+    const scope = getCurrentScope();
+    return scope?.getSlot(itemsSlotKey)?.value;
+  };
+
+  const getItems = (): Set<T> => {
+    const scope = getOrCreateScope();
+    if (!scope) {
+      getFallbackDrainers().add(drainFallback);
+      return fallbackItems;
+    }
+
+    const items = scope.getOrCreateSlot(itemsSlotKey, () => new Set<T>()).value;
+    const cleanupState = scope.getOrCreateSlot(cleanupSlotKey, () => ({
+      registered: false,
+    })).value;
+
+    if (!cleanupState.registered) {
+      cleanupState.registered = true;
+      scope.addCleanup(() => options.onCleanup(items));
+    }
+
+    return items;
+  };
+
+  const drainFallback = (): MaybePromise => {
+    if (fallbackItems.size > 0) {
+      return options.onCleanup(fallbackItems);
+    }
+  };
+
+  return {
+    getItems,
+    getScopedItems,
+    fallbackItems,
+  };
+};

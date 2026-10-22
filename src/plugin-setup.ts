@@ -17,13 +17,22 @@ type GlobalWithTsxFlag = typeof globalThis & { [TSX_LOADER_REGISTERED_KEY]?: boo
 
 const appendMissingRuntimeArgs = (runtimeOptionArgs: string[]) => {
   for (const arg of runtimeOptionArgs) {
-    if (process.argv.includes(arg)) continue;
-    process.argv.push(arg);
+    const eqIndex = arg.indexOf('=');
+    const prefix = eqIndex !== -1 ? arg.slice(0, eqIndex + 1) : arg;
+    const existingIndex = process.argv.findIndex((item) =>
+      eqIndex !== -1 ? item.startsWith(prefix) : item === arg
+    );
+
+    if (existingIndex !== -1) {
+      process.argv[existingIndex] = arg;
+    } else {
+      process.argv.push(arg);
+    }
   }
 };
 
 const loadDomSetupModule = async (domSetupPath: string) => {
-  await import(pathToFileURL(domSetupPath).href);
+  await import(`${pathToFileURL(domSetupPath).href}?t=${Date.now()}`);
 };
 
 const registerNodeTsxLoader = async (packageTag: string): Promise<() => void> => {

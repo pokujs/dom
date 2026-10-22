@@ -42,21 +42,39 @@ test('metrics summary returns sorted top entries', async () => {
 
   assert.ok(summary);
   assert.strictEqual(summary?.totalCaptured, 3);
+  assert.strictEqual(summary?.totalReported, 2);
   assert.deepStrictEqual(
     summary?.topSlowest.map((entry) => entry.componentName),
     ['B', 'C']
   );
+
+  const filteredSummary = createMetricsSummary(
+    [
+      { file: 'a', componentName: 'A', durationMs: 0.4 },
+      { file: 'b', componentName: 'B', durationMs: 4.2 },
+      { file: 'c', componentName: 'C', durationMs: 0.8 },
+    ],
+    normalizeMetricsOptions({ enabled: true, topN: 5, minDurationMs: 1 })
+  );
+
+  assert.ok(filteredSummary);
+  assert.strictEqual(filteredSummary?.totalCaptured, 3);
+  assert.strictEqual(filteredSummary?.totalReported, 1);
+  assert.deepStrictEqual(
+    filteredSummary?.topSlowest.map((entry) => entry.componentName),
+    ['B']
+  );
 });
 
-test('selectTopSlowestMetrics truncates and orders values', async () => {
+test('selectTopSlowestMetrics truncates, orders, and filters by minDurationMs', async () => {
   const top = selectTopSlowestMetrics(
     [
       { file: 'a', componentName: 'A', durationMs: 1 },
       { file: 'b', componentName: 'B', durationMs: 3 },
       { file: 'c', componentName: 'C', durationMs: 2 },
     ],
-    normalizeMetricsOptions({ enabled: true, topN: 2 })
+    normalizeMetricsOptions({ enabled: true, topN: 2, minDurationMs: 2.5 })
   );
 
-  assert.deepStrictEqual(top.map((entry) => entry.componentName), ['B', 'C']);
+  assert.deepStrictEqual(top.map((entry) => entry.componentName), ['B']);
 });

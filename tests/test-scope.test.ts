@@ -26,7 +26,7 @@ function ensureScope(): TestScope {
 	return scope;
 }
 
-describe("test-scope: TypeScript slot keys", async () => {
+await describe("test-scope: TypeScript slot keys", async () => {
 	await it("defineSlotKey creates branded symbol keys", async () => {
 		const KEY_A = defineSlotKey<string>("@test/key-a");
 		const KEY_B = defineSlotKey<number>("@test/key-b");
@@ -45,7 +45,7 @@ describe("test-scope: TypeScript slot keys", async () => {
 	});
 });
 
-describe("test-scope: ALS laziness & holder creation", async () => {
+await describe("test-scope: ALS laziness & holder creation", async () => {
 	await it("createLazyHolder creates sentinel with undefined scope", async () => {
 		const holder = createLazyHolder();
 		assert.ok(holder, "Holder is defined");
@@ -53,7 +53,7 @@ describe("test-scope: ALS laziness & holder creation", async () => {
 	});
 
 	await it("getOrCreateScope returns undefined outside ALS context", async () => {
-		const scope = getOrCreateScope();
+		const scope = als.exit(() => getOrCreateScope());
 		assert.strictEqual(scope, undefined, "No scope outside ALS context");
 	});
 
@@ -63,7 +63,7 @@ describe("test-scope: ALS laziness & holder creation", async () => {
 	});
 });
 
-describe("test-scope: Lazy scope initialization in ALS", async () => {
+await describe("test-scope: Lazy scope initialization in ALS", async () => {
 	await it("runScoped creates ALS context with holder", async () => {
 		const holder = createLazyHolder();
 		let capturedHolder: LazyHolder | undefined;
@@ -116,7 +116,7 @@ describe("test-scope: Lazy scope initialization in ALS", async () => {
 	});
 });
 
-describe("test-scope: Slot creation & value management", async () => {
+await describe("test-scope: Slot creation & value management", async () => {
 	await it("getOrCreateSlot initializes with init() result", async () => {
 		const holder = createLazyHolder();
 		const KEY = defineSlotKey<number>("@test/number-slot");
@@ -160,7 +160,7 @@ describe("test-scope: Slot creation & value management", async () => {
 	});
 });
 
-describe("test-scope: Slot value mutation & notification", async () => {
+await describe("test-scope: Slot value mutation & notification", async () => {
 	await it("notify() updates slot value and fires observers", async () => {
 		const holder = createLazyHolder();
 		const KEY = defineSlotKey<number>("@test/notify-slot");
@@ -217,7 +217,7 @@ describe("test-scope: Slot value mutation & notification", async () => {
 	});
 });
 
-describe("test-scope: onDispose callbacks (LIFO & error handling)", async () => {
+await describe("test-scope: onDispose callbacks (LIFO & error handling)", async () => {
 	await it("onDispose callbacks execute in LIFO order", async () => {
 		const holder = createLazyHolder();
 		const KEY = defineSlotKey<Set<string>>("@test/dispose-slot");
@@ -338,7 +338,7 @@ describe("test-scope: onDispose callbacks (LIFO & error handling)", async () => 
 	});
 });
 
-describe("test-scope: Scope-level cleanups via addCleanup", async () => {
+await describe("test-scope: Scope-level cleanups via addCleanup", async () => {
 	await it("addCleanup callbacks execute in LIFO order", async () => {
 		const holder = createLazyHolder();
 		const order: string[] = [];
@@ -416,7 +416,7 @@ describe("test-scope: Scope-level cleanups via addCleanup", async () => {
 	});
 });
 
-describe("test-scope: Concurrent isolation via ALS", async () => {
+await describe("test-scope: Concurrent isolation via ALS", async () => {
 	await it("concurrent runScoped calls get isolated scopes", async () => {
 		const KEY = defineSlotKey<{ id: number }>("@test/concurrent-isolation");
 		const results: Array<{ id: number; otherIds: number[] }> = [];
@@ -486,19 +486,19 @@ describe("test-scope: Concurrent isolation via ALS", async () => {
 	});
 });
 
-describe("test-scope: Hook registration (getScopeHooks / registerScopeHooks)", async () => {
+await describe("test-scope: Hook registration (getScopeHooks / registerScopeHooks)", async () => {
   type GlobalWithHooks = typeof globalThis & {
     [key: symbol]: unknown;
   };
   const g = globalThis as GlobalWithHooks;
   let originalHooks: unknown;
 
-  beforeEach(() => {
+  const beforeControl = beforeEach(() => {
     originalHooks = g[SCOPE_HOOKS_KEY];
     delete g[SCOPE_HOOKS_KEY];
   });
 
-  afterEach(() => {
+  const afterControl = afterEach(() => {
     if (originalHooks === undefined) {
       delete g[SCOPE_HOOKS_KEY];
     } else {
@@ -507,70 +507,75 @@ describe("test-scope: Hook registration (getScopeHooks / registerScopeHooks)", a
     originalHooks = undefined;
   });
 
-	await it("registerScopeHooks idempotently registers hooks", async () => {
-		// First register
-		registerScopeHooks();
-		const hooks1 = getScopeHooks();
-		if (!hooks1) {
-			assert.fail("Hooks should be registered");
-		}
+  try {
+    await it("registerScopeHooks idempotently registers hooks", async () => {
+      // First register
+      registerScopeHooks();
+      const hooks1 = getScopeHooks();
+      if (!hooks1) {
+        assert.fail("Hooks should be registered");
+      }
 
-		assert.ok(
-			"createHolder" in hooks1 && "runScoped" in hooks1,
-			"Hooks have required methods",
-		);
+      assert.ok(
+        "createHolder" in hooks1 && "runScoped" in hooks1,
+        "Hooks have required methods",
+      );
 
-		// Second register (should not overwrite)
-		registerScopeHooks();
-		const hooks2 = getScopeHooks();
-		assert.strictEqual(
-			hooks1,
-			hooks2,
-			"Same hooks instance returned (idempotent)",
-		);
-	});
+      // Second register (should not overwrite)
+      registerScopeHooks();
+      const hooks2 = getScopeHooks();
+      assert.strictEqual(
+        hooks1,
+        hooks2,
+        "Same hooks instance returned (idempotent)",
+      );
+    });
 
-	await it("registerScopeHooks composes with an existing provider", async () => {
-		const calls: string[] = [];
-		g[SCOPE_HOOKS_KEY] = {
-			createHolder: () => ({ scope: { tag: "legacy" } }),
-			runScoped: async (_holder: { scope: unknown }, fn: () => Promise<unknown> | unknown) => {
-				calls.push("legacy:before");
-				const result = fn();
-				if (result instanceof Promise) await result;
-				calls.push("legacy:after");
-			},
-		};
+    await it("registerScopeHooks composes with an existing provider", async () => {
+      const calls: string[] = [];
+      g[SCOPE_HOOKS_KEY] = {
+        createHolder: () => ({ scope: { tag: "legacy" } }),
+        runScoped: async (_holder: { scope: unknown }, fn: () => Promise<unknown> | unknown) => {
+          calls.push("legacy:before");
+          const result = fn();
+          if (result instanceof Promise) await result;
+          calls.push("legacy:after");
+        },
+      };
 
-		registerScopeHooks();
-		const hooks = getScopeHooks();
+      registerScopeHooks();
+      const hooks = getScopeHooks();
 
-		if (!hooks) {
-			assert.fail("Hooks should be available");
-		}
+      if (!hooks) {
+        assert.fail("Hooks should be available");
+      }
 
-		await hooks.runScoped(hooks.createHolder(), () => {
-			calls.push("test:run");
-		});
+      await hooks.runScoped(hooks.createHolder(), () => {
+        calls.push("test:run");
+      });
 
-		assert.deepStrictEqual(
-			calls,
-			[
-				"legacy:before",
-				"test:run",
-				"legacy:after",
-			],
-			"Existing provider remains visible after DOM registration",
-		);
-	});
+      assert.deepStrictEqual(
+        calls,
+        [
+          "legacy:before",
+          "test:run",
+          "legacy:after",
+        ],
+        "Existing provider remains visible after DOM registration",
+      );
+    });
 
-	await it("getScopeHooks returns undefined before registration", async () => {
-		const hooks = getScopeHooks();
-		assert.strictEqual(hooks, undefined, "No hooks before registration");
-	});
+    await it("getScopeHooks returns undefined before registration", async () => {
+      const hooks = getScopeHooks();
+      assert.strictEqual(hooks, undefined, "No hooks before registration");
+    });
+  } finally {
+    beforeControl.reset();
+    afterControl.reset();
+  }
 });
 
-describe("test-scope: Integration - multiple slots in one scope", async () => {
+await describe("test-scope: Integration - multiple slots in one scope", async () => {
 	await it("scope maintains multiple independent slots", async () => {
 		const holder = createLazyHolder();
 		const STRINGS_KEY = defineSlotKey<string[]>("@test/strings");
@@ -640,7 +645,7 @@ describe("test-scope: Integration - multiple slots in one scope", async () => {
 	});
 });
 
-describe("test-scope: Memory cleanup & GC friendliness", async () => {
+await describe("test-scope: Memory cleanup & GC friendliness", async () => {
 	await it("_drain clears internal maps to aid GC", async () => {
 		const holder = createLazyHolder();
 		const KEY = defineSlotKey<number>("@test/gc-slot");

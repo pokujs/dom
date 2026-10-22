@@ -82,8 +82,7 @@ export const buildRunnerCommand = ({
   if (fileIndex === -1) return { shouldHandle: false, command };
 
   const nodeImportFlag = `--import=${domSetupPath}`;
-  const bunPreloadFlag = `--preload ${domSetupPath}`;
-  const denoPreloadFlag = `--preload=${domSetupPath}`;
+  const preloadFlag = `--preload=${domSetupPath}`;
   const beforeFile: string[] = [];
   const afterFile: string[] = [];
 
@@ -102,8 +101,9 @@ export const buildRunnerCommand = ({
       beforeFile.push(arg);
 
       if (isTsxImport(arg)) hasTsx = true;
-      else if (arg === nodeImportFlag) hasNodeLikeDomSetup = true;
-      else if (arg === denoPreloadFlag) hasDenoDomSetup = true;
+      else if (arg === nodeImportFlag || arg === preloadFlag)
+        hasNodeLikeDomSetup = true;
+      else if (arg === preloadFlag) hasDenoDomSetup = true;
       continue;
     }
 
@@ -116,13 +116,13 @@ export const buildRunnerCommand = ({
   if (isNodeRuntime(runtime) && !hasTsx) extraImports.push('--import=tsx');
   if (support.supportsNodeLikeImport && !hasNodeLikeDomSetup) {
     if (isBunRuntime(runtime)) {
-      extraImports.push(bunPreloadFlag);
+      extraImports.push(preloadFlag);
     } else {
       extraImports.push(nodeImportFlag);
     }
   }
-  if (support.supportsDenoPreload && !hasDenoDomSetup) {
-    extraImports.push(denoPreloadFlag);
+  if (support.supportsDenoPreload && !hasDenoDomSetup && !hasNodeLikeDomSetup) {
+    extraImports.push(preloadFlag);
   }
 
   const runtimeArgsToInject: string[] = [];

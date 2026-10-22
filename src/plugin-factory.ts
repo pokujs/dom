@@ -26,6 +26,7 @@ import {
 } from './plugin-metrics.ts';
 import { setupInProcessEnvironment } from './plugin-setup.ts';
 import { createRuntimeOptionArgPrefixes } from './runtime-options.ts';
+import { setInProcessMetricReceiver } from './testing-core.ts';
 
 export type FrameworkPluginInternals = {
   buildRunnerCommand: typeof buildRunnerCommand;
@@ -73,11 +74,61 @@ export const createFrameworkTestingPluginFactory = (
       prefixes
     );
 
+    const maybePruneMetrics = () => {
+      if (metrics.length > metricsOptions.topN * 10) {
+        metrics = selectTopSlowestMetrics(metrics, metricsOptions);
+      }
+    };
+
+    const handleMetricMessage = (message: unknown, file: string) => {
+      if (
+        isRenderMetricBatchMessage(
+          message,
+          descriptor.metricBatchMessageType
+        )
+      ) {
+        for (const metric of message.metrics) {
+          const durationMs = Number(metric.durationMs) || 0;
+
+          metrics.push({
+            file,
+            componentName: getComponentName(metric.componentName),
+            durationMs,
+          });
+        }
+
+        maybePruneMetrics();
+        return;
+      }
+
+      if (!isRenderMetricMessage(message, descriptor.metricMessageType)) {
+        return;
+      }
+
+      const durationMs = Number(message.durationMs) || 0;
+
+      metrics.push({
+        file,
+        componentName: getComponentName(message.componentName),
+        durationMs,
+      });
+
+      maybePruneMetrics();
+    };
+
     return definePlugin({
       name: descriptor.pluginName,
       ipc: metricsOptions.enabled,
 
       async setup(context: any) {
+        metrics = [];
+
+        if (metricsOptions.enabled && context.configs?.isolation === 'none') {
+          setInProcessMetricReceiver((message) => {
+            handleMetricMessage(message, '<in-process>');
+          });
+        }
+
         cleanupNodeTsxLoader = await setupInProcessEnvironment({
           isolation: context.configs.isolation,
           runtime: context.runtime,
@@ -102,54 +153,18 @@ export const createFrameworkTestingPluginFactory = (
       onTestProcess(child: any, file: string) {
         if (!metricsOptions.enabled) return;
 
-        const maybePruneMetrics = () => {
-          if (metrics.length > metricsOptions.topN * 10) {
-            metrics = selectTopSlowestMetrics(metrics, metricsOptions);
-          }
-        };
-
         child.on('message', (message: unknown) => {
-          if (
-            isRenderMetricBatchMessage(
-              message,
-              descriptor.metricBatchMessageType
-            )
-          ) {
-            for (const metric of message.metrics) {
-              const durationMs = Number(metric.durationMs) || 0;
-
-              metrics.push({
-                file,
-                componentName: getComponentName(metric.componentName),
-                durationMs,
-              });
-            }
-
-            maybePruneMetrics();
-            return;
-          }
-
-          if (!isRenderMetricMessage(message, descriptor.metricMessageType)) {
-            return;
-          }
-
-          const durationMs = Number(message.durationMs) || 0;
-
-          metrics.push({
-            file,
-            componentName: getComponentName(message.componentName),
-            durationMs,
-          });
-
-          maybePruneMetrics();
+          handleMetricMessage(message, file);
         });
       },
 
       teardown() {
+        setInProcessMetricReceiver(undefined);
         cleanupNodeTsxLoader?.();
         cleanupNodeTsxLoader = undefined;
 
         const summary = createMetricsSummary(metrics, metricsOptions);
+        metrics = [];
         if (!summary) return;
 
         if (metricsOptions.reporter) {

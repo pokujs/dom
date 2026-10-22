@@ -118,7 +118,8 @@ export const selectTopSlowestMetrics = (
   metrics: RenderMetric[],
   options: NormalizedMetricsOptions
 ) =>
-  [...metrics]
+  metrics
+    .filter((m) => m.durationMs >= options.minDurationMs)
     .sort((a, b) => b.durationMs - a.durationMs)
     .slice(0, options.topN);
 
