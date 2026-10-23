@@ -1,8 +1,8 @@
 import { AssertionError, strict as nodeAssert } from 'node:assert';
 import { GlobalWindow } from 'happy-dom';
 import { JSDOM } from 'jsdom';
-import { describe, it, assert } from 'poku';
-import { captureAssertions, registerSerializer } from 'poku/plugins';
+import { describe, it } from 'poku';
+import { createReporter, registerSerializer } from 'poku/plugins';
 import { formatDomNode, registerDomSerializer } from '../src/serializer.ts';
 import {
   setupHappyDomEnvironment,
@@ -27,10 +27,6 @@ const failureOutput = async (actual: unknown): Promise<string> => {
     operator: 'strictEqual',
     message: 'DOM serializer integration failure',
   });
-  const result = await captureAssertions(() =>
-    assert.strictEqual(actual, null, error)
-  );
-  const previous = process.exitCode;
   const write = process.stdout.write;
   let output = '';
   process.stdout.write = (chunk: any): boolean => {
@@ -38,10 +34,9 @@ const failureOutput = async (actual: unknown): Promise<string> => {
     return true;
   };
   try {
-    result.report();
+    createReporter({})().onAssertionFailure?.({ error, assertOptions: {} });
   } finally {
     process.stdout.write = write;
-    process.exitCode = previous ?? 0;
   }
   return output;
 };
