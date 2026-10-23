@@ -131,10 +131,18 @@ This package includes:
 
 ## Development
 
-The next DOM release requires Poku 4.6 or later with the public assertion capture
-API. During review, CI builds the pinned core integration candidate in
-`.github/actions/setup-core/action.yml`; the temporary package is never published.
-Replace that setup with the released dependency before publishing DOM.
+The next DOM release requires Poku 4.6 or later with the public serializer and assertion-capture APIs.
+During review, CI builds the pinned core integration candidate in
+`.github/actions/setup-core/action.yml`. Its temporary 4.6.0 package is local to
+the CI job; it is not published to npm. Replace this candidate setup with the
+released dependency before publishing DOM.
+
+DOM environment setup registers assertion rendering for the active adapter's
+real Node implementation. Output is limited to 2,000 content characters, 200
+visited nodes, and 10 levels of descendants. Truncated output ends with an
+ellipsis. Switching adapters replaces the registration; `disposeDomSerializer()`
+removes it explicitly when tearing down an environment. DOM-like plain objects
+retain Poku's normal object rendering.
 
 `waitFor` buffers Poku assertion events for each poll. Intermediate failures are
 discarded; only the winning poll or final failed poll is reported. Ordinary query

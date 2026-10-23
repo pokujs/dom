@@ -6,6 +6,7 @@ import type {
   TestingPluginOptions,
 } from './types.ts';
 import { definePlugin } from 'poku/plugins';
+import { disposeDomSerializer } from './serializer.ts';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
@@ -160,6 +161,7 @@ export const createFrameworkTestingPluginFactory = (
 
       teardown() {
         setInProcessMetricReceiver(undefined);
+        if (cleanupNodeTsxLoader) disposeDomSerializer();
         cleanupNodeTsxLoader?.();
         cleanupNodeTsxLoader = undefined;
 
