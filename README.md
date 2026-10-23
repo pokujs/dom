@@ -131,7 +131,7 @@ This package includes:
 
 ## Development
 
-The next DOM release requires Poku 4.6 or later with the public serializer API.
+The next DOM release requires Poku 4.6 or later with the public serializer and assertion-capture APIs.
 During review, CI builds the pinned core integration candidate in
 `.github/actions/setup-core/action.yml`. Its temporary 4.6.0 package is local to
 the CI job; it is not published to npm. Replace this candidate setup with the
@@ -146,6 +146,36 @@ retain Poku's normal object rendering.
 
 Native AssertionError messages and stacks remain unchanged; these formatter
 limits do not alter the runtime's own object inspection.
+
+`waitFor` buffers Poku assertion events for each poll. Intermediate failures are
+discarded; only the winning poll or final failed poll is reported. Ordinary query
+errors remain catchable without changing the process exit status. Testing
+Library's timeout error and DOM diagnostic are preserved.
+
+Callbacks invoked by a resource created before polling can bind their listener to
+the current attempt:
+
+```ts
+await waitFor(
+  ({ bind }) =>
+    new Promise((resolve, reject) => {
+      emitter.once(
+        'data',
+        bind((value) => {
+          try {
+            assert.strictEqual(value.status, 'ready');
+            resolve(value);
+          } catch (error) {
+            reject(error);
+          }
+        }),
+      );
+    }),
+);
+```
+
+Always await the callback's work. Assertions that outlive a settled poll are
+handled normally and cannot silently fail an already completed attempt.
 
 ```bash
 npm ci
