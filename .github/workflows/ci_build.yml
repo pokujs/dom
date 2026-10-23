@@ -29,5 +29,8 @@ jobs:
       - name: 📦 Installing Dependencies
         run: npm ci
 
+      - name: Build proposed Poku APIs
+        uses: ./.github/actions/setup-core
+
       - name: 🤹🏻‍♀️ Building
         run: npm run build
