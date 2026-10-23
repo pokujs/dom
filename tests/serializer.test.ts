@@ -2,7 +2,7 @@ import { strict as nodeAssert } from 'node:assert';
 import { GlobalWindow } from 'happy-dom';
 import { JSDOM } from 'jsdom';
 import { describe, it, assert } from 'poku';
-import { captureAssertions } from 'poku/plugins';
+import { captureAssertions, registerSerializer } from 'poku/plugins';
 import { formatDomNode, registerDomSerializer } from '../src/serializer.ts';
 import {
   setupHappyDomEnvironment,
@@ -74,8 +74,18 @@ await describe('DOM assertion serialization', async () => {
       );
       nodeAssert.doesNotMatch(await failureOutput(ordinary), /\[DOMNode/);
       nodeAssert.strictEqual(probes, 0);
-      disposeDomSerializer();
-      nodeAssert.doesNotMatch(await failureOutput(node), /\[DOMNode/);
+      const disposeFallback = registerSerializer({
+        name: 'test.dom-fallback',
+        test: (value) => value === node,
+        serialize: () => '[fallback node]',
+      });
+      try {
+        nodeAssert.match(await failureOutput(node), /\[DOMNode/);
+        disposeDomSerializer();
+        nodeAssert.match(await failureOutput(node), /\[fallback node\]/);
+      } finally {
+        disposeFallback();
+      }
       await setup({ runtimeOptions, packageTag: '@pokujs/dom' });
       nodeAssert.match(await failureOutput(node), /\[DOMNode/);
       disposeDomSerializer();
@@ -89,18 +99,25 @@ await describe('DOM assertion serialization', async () => {
       happy.Node as unknown as typeof Node
     );
     const disposeJsdom = registerDomSerializer(jsdom.window.Node);
+    const previousNode = happy.document.createElement('b');
+    const disposeFallback = registerSerializer({
+      name: 'test.previous-adapter',
+      test: (value) => value === previousNode,
+      serialize: () => '[previous adapter]',
+    });
     try {
       disposeHappy();
       nodeAssert.match(
         await failureOutput(jsdom.window.document.createElement('b')),
         /\[DOMNode <b><\/b>\]/
       );
-      nodeAssert.doesNotMatch(
-        await failureOutput(happy.document.createElement('b')),
-        /\[DOMNode/
+      nodeAssert.match(
+        await failureOutput(previousNode),
+        /\[previous adapter\]/
       );
     } finally {
       disposeJsdom();
+      disposeFallback();
       jsdom.window.close();
       await happy.happyDOM.close();
     }
