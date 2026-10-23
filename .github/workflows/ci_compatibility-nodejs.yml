@@ -53,6 +53,4 @@ jobs:
         uses: ./.github/actions/setup-core
 
       - name: 🔬 Node ${{ matrix.node-version }}
-        run: |
-          timeout 20s node --import=tsx tests/serializer.test.ts
-          npm run test:node:process && npm run test:node:none
+        run: npm run test:node:process && npm run test:node:none

@@ -22,11 +22,11 @@ const runtimeOptions = {
 
 const failureOutput = async (actual: unknown): Promise<string> => {
   const error = new AssertionError({
-    actual,
-    expected: null,
-    operator: 'strictEqual',
     message: 'DOM serializer integration failure',
   });
+  error.actual = actual;
+  error.expected = null;
+  error.operator = 'strictEqual';
   const write = process.stdout.write;
   let output = '';
   process.stdout.write = (chunk: any): boolean => {

@@ -59,6 +59,4 @@ jobs:
         uses: ./.github/actions/setup-core
 
       - name: 🔬 Deno ${{ matrix.deno-version }}
-        run: |
-          timeout 20s deno run -A tests/serializer.test.ts
-          npm run test:deno:process && npm run test:deno:none
+        run: npm run test:deno:process && npm run test:deno:none
