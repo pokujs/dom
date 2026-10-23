@@ -30,5 +30,8 @@ jobs:
       - name: 📦 Installing Dependencies
         run: npm ci
 
+      - name: Build proposed Poku APIs
+        uses: ./.github/actions/setup-core
+
       - name: 👔 Lint
         run: npm run lint

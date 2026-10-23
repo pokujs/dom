@@ -1,0 +1,18 @@
+name: Build Poku API candidate
+description: Test the DOM consumer against the exact core APIs proposed for its next release.
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: wellwelwel/poku
+        ref: 2b6c05f4d944d07936d0d759ce17100fb23d9d0e
+        path: .poku-core
+        persist-credentials: false
+    - shell: bash
+      run: |
+        npm ci --prefix .poku-core
+        npm run build --prefix .poku-core
+        npm version 4.6.0 --prefix .poku-core --no-git-tag-version --ignore-scripts
+        npm pack ./.poku-core --pack-destination .poku-core
+        npm install --no-save --package-lock=false ./.poku-core/poku-4.6.0.tgz

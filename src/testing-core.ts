@@ -1,3 +1,8 @@
+import {
+  captureAssertions,
+  type AssertionCaptureContext,
+  type AssertionCaptureResult,
+} from 'poku/plugins';
 import type {
   PrettyDOMOptions,
   Screen,
@@ -335,56 +340,33 @@ export const wrapFireEventMethods = (
   }
 };
 
-const POKU_RETRY_CONTEXT_KEY = Symbol.for('@poku/retryContext');
-const POKU_DEFERRED_ASSERTION_KEY = Symbol.for('@poku/deferred-assertion');
-
-type PokuRetryContextEntry = {
-  attempts: number;
-  currentAttempt: number;
-  delay: number;
-  failed: boolean;
-  silent?: boolean;
-};
-
-type PokuRetryState = {
-  run?: <Result>(
-    entry: PokuRetryContextEntry,
-    callback: () => Result
-  ) => Result;
-};
-
 export const createWaitFor =
   (waitForImpl: typeof baseWaitFor = baseWaitFor) =>
   async <T>(
-    callback: () => Promise<T> | T,
+    callback: (context: AssertionCaptureContext) => Promise<T> | T,
     options?: waitForOptions
   ): Promise<T> => {
-    const wrappedCallback = (): Promise<T> | T => {
-      const retryState = (globalThis as RuntimeStateGlobal)[
-        POKU_RETRY_CONTEXT_KEY
-      ] as PokuRetryState | undefined;
-
-      if (!retryState?.run) return callback();
-      const entry: PokuRetryContextEntry = {
-        attempts: 1,
-        currentAttempt: 1,
-        delay: 0,
-        failed: false,
-        silent: true,
-      };
-      return retryState.run(entry, callback);
+    let lastOutcome: AssertionCaptureResult<T> | undefined;
+    let settled = false;
+    const wrappedCallback = async (): Promise<T> => {
+      const outcome = await captureAssertions(callback);
+      lastOutcome = outcome;
+      if (outcome.status === 'failed') {
+        if (settled) outcome.report();
+        throw outcome.error;
+      }
+      return outcome.value;
     };
 
     try {
-      return await waitForImpl(wrappedCallback, options);
+      const value = await waitForImpl(wrappedCallback, options);
+      lastOutcome?.report();
+      return value;
     } catch (error) {
-      const deferred = (error as unknown as Record<symbol, unknown>)?.[
-        POKU_DEFERRED_ASSERTION_KEY
-      ];
-      if (typeof deferred === 'function') {
-        (deferred as () => void)();
-      }
+      lastOutcome?.report();
       throw error;
+    } finally {
+      settled = true;
     }
   };
 
