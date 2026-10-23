@@ -1,4 +1,4 @@
-import { strict as nodeAssert } from 'node:assert';
+import { AssertionError, strict as nodeAssert } from 'node:assert';
 import { GlobalWindow } from 'happy-dom';
 import { JSDOM } from 'jsdom';
 import { describe, it, assert } from 'poku';
@@ -21,8 +21,14 @@ const runtimeOptions = {
 };
 
 const failureOutput = async (actual: unknown): Promise<string> => {
+  const error = new AssertionError({
+    actual,
+    expected: null,
+    operator: 'strictEqual',
+    message: 'DOM serializer integration failure',
+  });
   const result = await captureAssertions(() =>
-    assert.strictEqual(actual, null)
+    assert.strictEqual(actual, null, error)
   );
   const previous = process.exitCode;
   const write = process.stdout.write;
@@ -130,6 +136,9 @@ await describe('DOM assertion serialization', async () => {
       large.textContent = 'x'.repeat(100000);
       nodeAssert.ok(formatDomNode(large).length <= 2011);
       nodeAssert.match(formatDomNode(large), /…\]$/);
+      const report = await failureOutput(large);
+      nodeAssert.match(report, /\[DOMNode .*…\]/);
+      nodeAssert.ok(report.length < 10000);
       large.textContent = '';
       large.setAttribute('data-long', '"'.repeat(10000));
       nodeAssert.ok(formatDomNode(large).length <= 2011);
