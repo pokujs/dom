@@ -1,6 +1,8 @@
 import { GlobalWindow } from 'happy-dom';
 import type { RuntimeOptions } from './types.ts';
 import { registerScopeHooks } from './test-scope.ts';
+import { installDomSerializer } from './serializer.ts';
+export { disposeDomSerializer } from './serializer.ts';
 
 type SetupDomEnvironmentOptions = {
   runtimeOptions: RuntimeOptions;
@@ -234,6 +236,7 @@ export const setupHappyDomEnvironment = async (
   }
 
   applyReactActEnvironment(Boolean(options.enableReactActEnvironment));
+  installDomSerializer(globalThis.Node);
 };
 
 export const setupJsdomEnvironment = async (
@@ -273,4 +276,5 @@ export const setupJsdomEnvironment = async (
   }
 
   applyReactActEnvironment(Boolean(options.enableReactActEnvironment));
+  installDomSerializer(globalThis.Node);
 };

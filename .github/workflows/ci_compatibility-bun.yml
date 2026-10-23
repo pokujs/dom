@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/ci_compatibility-bun.yml'
+      - '.github/actions/setup-core/**'
       - 'src/**'
       - 'tests/**'
       - 'package-lock.json'
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_compatibility-bun.yml'
+      - '.github/actions/setup-core/**'
       - 'src/**'
       - 'tests/**'
       - 'package-lock.json'
@@ -53,5 +55,8 @@ jobs:
       - name: 📦 Installing Dependencies
         run: npm ci
 
+      - name: Build proposed Poku APIs
+        uses: ./.github/actions/setup-core
+
       - name: 🔬 Bun ${{ matrix.bun-version }}
-        run: npm run test:bun
+        run: npm run test:bun:process && npm run test:bun:none

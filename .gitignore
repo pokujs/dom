@@ -1,4 +1,5 @@
 node_modules/
+.poku-core/
 dist/
 
 .DS_Store
