@@ -138,11 +138,14 @@ the CI job; it is not published to npm. Replace this candidate setup with the
 released dependency before publishing DOM.
 
 DOM environment setup registers assertion rendering for the active adapter's
-real Node implementation. Output is limited to 2,000 content characters, 200
+real Node implementation. Its actual/expected formatting is limited to 2,000 content characters, 200
 visited nodes, and 10 levels of descendants. Truncated output ends with an
 ellipsis. Switching adapters replaces the registration; `disposeDomSerializer()`
 removes it explicitly when tearing down an environment. DOM-like plain objects
 retain Poku's normal object rendering.
+
+Native AssertionError messages and stacks remain unchanged; these formatter
+limits do not alter the runtime's own object inspection.
 
 `waitFor` buffers Poku assertion events for each poll. Intermediate failures are
 discarded; only the winning poll or final failed poll is reported. Ordinary query
